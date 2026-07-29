@@ -31,7 +31,8 @@ private:
         {99, 99, 99, 99, 99, 99, 99, 99}};
 
 public:
-    JPEGEncoder();
-    void encode_image(const PPMImage &img);
+    const PPMImage &img;
+    JPEGEncoder(const PPMImage &img) : img(img) {};
+    void encode_image();
 };
 #endif

@@ -182,8 +182,8 @@ int main(int argc, char *argv[])
 	img = load_ppm(file);
 	color_shift(img);
 
-	JPEGEncoder j;
-	j.encode_image(img);
+	JPEGEncoder j(img);
+	j.encode_image();
 
 	// scan_raw_jpeg(file, headers_and_bytes);
 	// print_data(headers_and_bytes);

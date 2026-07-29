@@ -9,16 +9,19 @@
 #include "dct.h"
 #include "zigzag.h"
 #include "rle.h"
+#include "huffman_encoding.h"
+#include "bitwriter.h"
 #include "encode.h"
 
-JPEGEncoder::JPEGEncoder() {}
-
-void JPEGEncoder::encode_image(const PPMImage &img)
+void JPEGEncoder::encode_image()
 {
     // Calculate total blocks, rounding up to handle padding
     int blocks_across = (img.width + 7) / 8;
     int blocks_down = (img.height + 7) / 8;
-
+    HuffmanTable dc_table(true, true);
+    HuffmanTable ac_table(false, false);
+    dc_table.initialize();
+    ac_table.initialize();
     for (int by = 0; by < blocks_down; by++)
     {
         for (int bx = 0; bx < blocks_across; bx++)
@@ -45,10 +48,13 @@ void JPEGEncoder::encode_image(const PPMImage &img)
             EncodedBlockSymbols y_rle = encode_rle(y_zz, state.prev_dc_y);
             state.prev_dc_y = y_zz.data[0];
             EncodedBlockSymbols cb_rle = encode_rle(cb_zz, state.prev_dc_cb);
-            state.prev_dc_cb = y_zz.data[0];
+            state.prev_dc_cb = cb_zz.data[0];
             EncodedBlockSymbols cr_rle = encode_rle(cr_zz, state.prev_dc_cr);
-            state.prev_dc_cr = y_zz.data[0];
+            state.prev_dc_cr = cr_zz.data[0];
 
+            // Second false does not do anything yet
+            BitWriter bitwriter_y;
+            write_block_bits(bitwriter_y, y_rle, dc_table, ac_table);
         }
     }
 }
