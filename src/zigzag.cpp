@@ -21,3 +21,18 @@ ZigZagBlock zigzag_scan(const QuantBlock8x8 &q_block)
 
     return z_block;
 }
+
+ZigZagBlock zigzag_scan(const int block[8][8])
+{
+    ZigZagBlock z_block;
+
+    for (int x = 0; x < 64; x++)
+    {
+        int row = ZIGZAG_MAP[x][0];
+        int col = ZIGZAG_MAP[x][1];
+
+        z_block.data[x] = block[row][col];
+    }
+
+    return z_block;
+}

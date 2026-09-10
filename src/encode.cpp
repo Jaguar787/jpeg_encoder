@@ -13,15 +13,142 @@
 #include "bitwriter.h"
 #include "encode.h"
 
+void JPEGEncoder::write_dht(std::fstream &file, uint8_t tableClass, uint8_t tableID,
+                            const uint8_t *counts, const uint8_t *values)
+{
+    uint16_t numValues = 0;
+    for (int i = 0; i < 16; ++i)
+        numValues += counts[i];
+
+    uint16_t length = 2 + 1 + 16 + numValues; // length field itself + TC/TH byte + counts + values
+
+    file.put(0xFF);
+    file.put(0xC4);
+    file.put((length >> 8) & 0xFF);
+    file.put(length & 0xFF);
+    file.put((tableClass << 4) | tableID);
+    file.write(reinterpret_cast<const char *>(counts), 16);
+    file.write(reinterpret_cast<const char *>(values), numValues);
+}
+
+void JPEGEncoder::write_sos(std::fstream &file)
+{
+    file.put(0xFF);
+    file.put(0xDA);
+    file.put(0x00);
+    file.put(0x0C); // length = 12
+
+    file.put(0x03); // NS = 3 components
+
+    // component 1: Y  -> DC table 0, AC table 0
+    file.put(0x01);
+    file.put(0x00);
+
+    // component 2: Cb -> DC table 1, AC table 1
+    file.put(0x02);
+    file.put(0x11);
+
+    // component 3: Cr -> DC table 1, AC table 1
+    file.put(0x03);
+    file.put(0x11);
+
+    file.put(0x00); // Ss
+    file.put(0x3F); // Se
+    file.put(0x00); // Ah/Al
+}
+
+void JPEGEncoder::headify()
+{
+    std::fstream file("Image.jpeg", std::ios::out | std::ios::binary);
+
+    // SOI
+    file.put(0xFF);
+    file.put(0xD8);
+    // APP0  (NULL currently)
+
+    // Quant Table
+    ZigZagBlock lum = zigzag_scan(LUMINANCE_TABLE);
+    ZigZagBlock chrom = zigzag_scan(CHROMINANCE_TABLE);
+
+    // --- Luminance DQT ---
+    file.put(0xFF);
+    file.put(0xDB); // marker
+    file.put(0x00);
+    file.put(0x43); // length = 67
+    file.put(0x00); // precision=0, table ID=0
+    for (const auto &val : lum.data)
+    {
+        uint8_t byte = static_cast<uint8_t>(val);
+        file.write(reinterpret_cast<const char *>(&byte), 1);
+    }
+
+    // --- Chrominance DQT ---
+    file.put(0xFF);
+    file.put(0xDB); // marker
+    file.put(0x00);
+    file.put(0x43); // length = 67
+    file.put(0x01); // precision=0, table ID=1
+    for (const auto &val : chrom.data)
+    {
+        uint8_t byte = static_cast<uint8_t>(val);
+        file.write(reinterpret_cast<const char *>(&byte), 1);
+    }
+
+    // --- Start of Frame S0F0
+    file.put(0xFF);
+    file.put(0xC0);
+    file.put(0x00);
+    file.put(0x11);
+    file.put(0x08); // precision
+    file.put((img.height >> 8) & 0xFF);
+    file.put(img.height & 0xFF);
+    file.put((img.width >> 8) & 0xFF);
+    file.put(img.width & 0xFF);
+    file.put(0x03); // Color scale
+    // component 1: Y
+    file.put(0x01);
+    file.put(0x11);
+    file.put(0x00); // id, sampling 1x1, DQT 0
+    // component 2: Cb
+    file.put(0x02);
+    file.put(0x11);
+    file.put(0x01); // id, sampling, DQT 1
+    // component 3: Cr
+    file.put(0x03);
+    file.put(0x11);
+    file.put(0x01); // id, sampling, DQT 1
+
+    HuffmanTable h;
+    // --- Huffman Table ---
+    write_dht(file, 0, 0, h.STD_LUMA_DC_BITS, h.STD_LUMA_DC_HUFFVAL);
+    write_dht(file, 1, 0, h.STD_LUMA_AC_BITS, h.STD_LUMA_AC_HUFFVAL);
+    write_dht(file, 0, 1, h.STD_CHROMA_DC_BITS, h.STD_CHROMA_DC_HUFFVAL);
+    write_dht(file, 1, 1, h.STD_CHROMA_AC_BITS, h.STD_CHROMA_AC_HUFFVAL);
+
+    // --- SOS ---
+    write_sos(file);
+    encode_image();
+}
+
 void JPEGEncoder::encode_image()
 {
     // Calculate total blocks, rounding up to handle padding
     int blocks_across = (img.width + 7) / 8;
     int blocks_down = (img.height + 7) / 8;
-    HuffmanTable dc_table(true, true);
-    HuffmanTable ac_table(false, false);
-    dc_table.initialize();
-    ac_table.initialize();
+
+    // Luminance tables
+    HuffmanTable dc_table_y(true, false);
+    HuffmanTable ac_table_y(false, false);
+    dc_table_y.initialize();
+    ac_table_y.initialize();
+
+    // Chrominance tables
+    HuffmanTable dc_table_c(true, true);
+    HuffmanTable ac_table_c(false, true);
+    dc_table_c.initialize();
+    ac_table_c.initialize();
+
+    //
     for (int by = 0; by < blocks_down; by++)
     {
         for (int bx = 0; bx < blocks_across; bx++)
@@ -52,9 +179,12 @@ void JPEGEncoder::encode_image()
             EncodedBlockSymbols cr_rle = encode_rle(cr_zz, state.prev_dc_cr);
             state.prev_dc_cr = cr_zz.data[0];
 
-            // Second false does not do anything yet
             BitWriter bitwriter_y;
-            write_block_bits(bitwriter_y, y_rle, dc_table, ac_table);
+            write_block_bits(bitwriter_y, y_rle, dc_table_y, ac_table_y);
+            BitWriter bitwriter_cb;
+            write_block_bits(bitwriter_cb, cb_rle, dc_table_c, ac_table_c);
+            BitWriter bitwriter_cr;
+            write_block_bits(bitwriter_cr, cr_rle, dc_table_c, ac_table_c);
         }
     }
 }

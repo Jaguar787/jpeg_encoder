@@ -179,14 +179,14 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
-	img = load_ppm(file);
-	color_shift(img);
+	// img = load_ppm(file);
+	// color_shift(img);
 
-	JPEGEncoder j(img);
-	j.encode_image();
+	// JPEGEncoder j(img);
+	// j.headify();
 
-	// scan_raw_jpeg(file, headers_and_bytes);
-	// print_data(headers_and_bytes);
+	scan_raw_jpeg(file, headers_and_bytes);
+	print_data(headers_and_bytes);
 
 	return 0;
 }

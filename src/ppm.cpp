@@ -53,7 +53,6 @@ PPMImage load_ppm(std::ifstream &file)
 
     if (type == PPMType::P3_ASCII)
     {
-        std::cout << "Loading P3 ASCII PPM image..." << std::endl;
         int value = 0;
         for (uint8_t i = 0; i < img.pixels.size(); i++)
         {
@@ -67,7 +66,6 @@ PPMImage load_ppm(std::ifstream &file)
     }
     else if (type == PPMType::P6_BINARY) // Has not been tested and should not work
     {
-        std::cout << "Loading P6 Binary PPM image..." << std::endl;
         file.read(reinterpret_cast<char *>(img.pixels.data()), img.pixels.size() * sizeof(RGB));
     }
 

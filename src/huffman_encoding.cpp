@@ -10,11 +10,17 @@ void HuffmanTable::initialize()
 {
     if (is_dc)
     {
-        build(STD_LUMA_DC_BITS, STD_LUMA_DC_HUFFVAL);
+        if (is_cb)
+            build(STD_CHROMA_DC_BITS, STD_CHROMA_DC_HUFFVAL);
+        else
+            build(STD_LUMA_DC_BITS, STD_LUMA_DC_HUFFVAL);
     }
     else
     {
-        build(STD_LUMA_AC_BITS, STD_LUMA_DC_BITS);
+        if (is_cb)
+            build(STD_CHROMA_AC_BITS, STD_CHROMA_AC_HUFFVAL);
+        else
+            build(STD_LUMA_AC_BITS, STD_LUMA_AC_HUFFVAL);
     }
 }
 

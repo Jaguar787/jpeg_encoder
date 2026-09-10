@@ -10,6 +10,11 @@ class JPEGEncoder
 {
 private:
     EncoderState state;
+
+public:
+    const PPMImage &img;
+
+    // Quant tables
     static constexpr int LUMINANCE_TABLE[8][8] = {
         {16, 11, 10, 16, 24, 40, 51, 61},
         {12, 12, 14, 19, 26, 58, 60, 55},
@@ -30,9 +35,11 @@ private:
         {99, 99, 99, 99, 99, 99, 99, 99},
         {99, 99, 99, 99, 99, 99, 99, 99}};
 
-public:
-    const PPMImage &img;
     JPEGEncoder(const PPMImage &img) : img(img) {};
     void encode_image();
+    void write_dht(std::fstream &file, uint8_t tableClass, uint8_t tableID,
+                   const uint8_t *counts, const uint8_t *values);
+    void write_sos(std::fstream &file);
+    void headify();
 };
 #endif
