@@ -4,9 +4,15 @@
 #include "dct.h"
 #include "zigzag.h"
 
+// Hardcoded zigzag map
 const int ZIGZAG_MAP[64][2] = {
     {0, 0}, {0, 1}, {1, 0}, {2, 0}, {1, 1}, {0, 2}, {0, 3}, {1, 2}, {2, 1}, {3, 0}, {4, 0}, {3, 1}, {2, 2}, {1, 3}, {0, 4}, {0, 5}, {1, 4}, {2, 3}, {3, 2}, {4, 1}, {5, 0}, {6, 0}, {5, 1}, {4, 2}, {3, 3}, {2, 4}, {1, 5}, {0, 6}, {0, 7}, {1, 6}, {2, 5}, {3, 4}, {4, 3}, {5, 2}, {6, 1}, {7, 0}, {7, 1}, {6, 2}, {5, 3}, {4, 4}, {3, 5}, {2, 6}, {1, 7}, {2, 7}, {3, 6}, {4, 5}, {5, 4}, {6, 3}, {7, 2}, {7, 3}, {6, 4}, {5, 5}, {4, 6}, {3, 7}, {4, 7}, {5, 6}, {6, 5}, {7, 4}, {7, 5}, {6, 6}, {5, 7}, {6, 7}, {7, 6}, {7, 7}};
 
+/**
+ * Reorders the coefficients of a quantized block into the JPEG zig-zag order.
+ * @param q_block Quantized 8x8 block.
+ * @return Block laid out in the zig-zag scanning order.
+ */
 ZigZagBlock zigzag_scan(const QuantBlock8x8 &q_block)
 {
     ZigZagBlock z_block;
@@ -22,6 +28,11 @@ ZigZagBlock zigzag_scan(const QuantBlock8x8 &q_block)
     return z_block;
 }
 
+/**
+ * Reorders a raw 8x8 integer block into the JPEG zig-zag order.
+ * @param block Integer block in row-major order.
+ * @return Block laid out in the zig-zag scanning order.
+ */
 ZigZagBlock zigzag_scan(const int block[8][8])
 {
     ZigZagBlock z_block;

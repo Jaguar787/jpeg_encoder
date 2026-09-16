@@ -6,6 +6,9 @@
 #include "huffman_encoding.h"
 #include "bitwriter.h"
 
+/**
+ * Initializes the Huffman lookup table for the selected DC/AC and luminance/chrominance profile.
+ */
 void HuffmanTable::initialize()
 {
     if (is_dc)
@@ -25,7 +28,9 @@ void HuffmanTable::initialize()
 }
 
 /**
- *
+ * Builds a Huffman lookup table from a canonical bit-length array and symbol list.
+ * @param bits Number of codes for each bit length.
+ * @param huffval Huffman symbol values ordered by the canonical code assignment.
  */
 void HuffmanTable::build(const uint8_t bits[16], const uint8_t *huffval)
 {
@@ -45,7 +50,9 @@ void HuffmanTable::build(const uint8_t bits[16], const uint8_t *huffval)
 }
 
 /**
- *
+ * Computes the bit-length category of a value for JPEG Huffman coding.
+ * @param val Signed coefficient value.
+ * @return Category index corresponding to the magnitude of the value.
  */
 int HuffmanTable::get_category(int16_t val) const
 {
@@ -59,6 +66,12 @@ int HuffmanTable::get_category(int16_t val) const
     return category;
 }
 
+/**
+ * Produces the bit pattern for a value within its Huffman category.
+ * @param val Signed coefficient value.
+ * @param category Huffman category index.
+ * @return Encoded value bits matching the JPEG category convention.
+ */
 uint32_t HuffmanTable::get_value_bits(int16_t val, int category) const
 {
     if (val >= 0)
@@ -71,6 +84,13 @@ uint32_t HuffmanTable::get_value_bits(int16_t val, int category) const
     }
 }
 
+/**
+ * Encodes the DC and AC symbols of one block into the shared bitstream.
+ * @param bitwriter Output bit writer that accumulates JPEG data.
+ * @param block RLE-encoded block symbols.
+ * @param dc_table Huffman table used for DC coefficients.
+ * @param ac_table Huffman table used for AC coefficients.
+ */
 void write_block_bits(BitWriter &bitwriter, const EncodedBlockSymbols &block, const HuffmanTable &dc_table, const HuffmanTable &ac_table)
 {
     int dc_cat = dc_table.get_category(block.dc_diff);

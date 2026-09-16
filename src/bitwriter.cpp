@@ -1,5 +1,10 @@
 #include "bitwriter.h"
 
+/**
+ * Appends a bit sequence to the internal output buffer.
+ * @param code Bit pattern to write.
+ * @param length Number of bits in the pattern.
+ */
 void BitWriter::write_bits(uint32_t code, uint8_t length)
 {
     for (int i = length - 1; i >= 0; --i)
@@ -15,6 +20,9 @@ void BitWriter::write_bits(uint32_t code, uint8_t length)
     }
 }
 
+/**
+ * Finalizes the current buffered bits by padding the last byte and storing it.
+ */
 void BitWriter::flush()
 {
     if (bit_count > 0)
@@ -29,6 +37,9 @@ void BitWriter::flush()
     }
 }
 
+/**
+ * Writes a complete byte to the stream and applies JPEG byte stuffing when required.
+ */
 void BitWriter::flush_byte()
 {
     bytes.push_back(buffer);
@@ -38,6 +49,10 @@ void BitWriter::flush_byte()
     bit_count = 0;
 }
 
+/**
+ * Returns the encoded bytes accumulated by the writer.
+ * @return Reference to the byte buffer.
+ */
 const std::vector<uint8_t> &BitWriter::data() const
 {
     return bytes;

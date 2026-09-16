@@ -6,11 +6,10 @@
 #include "ppm.h"
 
 /**
- * Detects the type of PPM image based on the header.
- * @param file The input file stream.
- * @return The detected PPMType.
+ * Detects whether the image file uses ASCII or binary PPM encoding.
+ * @param file Input stream positioned at the start of the PPM header.
+ * @return The detected PPM format type.
  */
-
 PPMType detect_ppm_type(std::ifstream &file)
 {
     std::string header;
@@ -25,11 +24,10 @@ PPMType detect_ppm_type(std::ifstream &file)
 }
 
 /**
- * Loads a PPM image from the given file stream.
- * @param file The input file stream.
- * @return A PPMImage object containing the image data.
+ * Loads a PPM image from disk into a memory structure for later JPEG processing.
+ * @param file Input stream containing the image file.
+ * @return Parsed image data and metadata.
  */
-
 PPMImage load_ppm(std::ifstream &file)
 {
     PPMImage img;
@@ -54,17 +52,25 @@ PPMImage load_ppm(std::ifstream &file)
     if (type == PPMType::P3_ASCII)
     {
         int value = 0;
-        for (uint8_t i = 0; i < img.pixels.size(); i++)
+        for (size_t i = 0; i < img.pixels.size(); i++)
         {
-            file >> value;
+            if (!(file >> value))
+            {
+                std::cerr << "Error: Premature end of file or invalid ASCII data at pixel " << i << std::endl;
+                break;
+            }
             img.pixels[i].r = static_cast<uint8_t>(value);
-            file >> value;
+
+            if (!(file >> value))
+                break;
             img.pixels[i].g = static_cast<uint8_t>(value);
-            file >> value;
+
+            if (!(file >> value))
+                break;
             img.pixels[i].b = static_cast<uint8_t>(value);
         }
     }
-    else if (type == PPMType::P6_BINARY) // Has not been tested and should not work
+    else if (type == PPMType::P6_BINARY) // Has not been tested but "should" work
     {
         file.read(reinterpret_cast<char *>(img.pixels.data()), img.pixels.size() * sizeof(RGB));
     }
@@ -73,15 +79,13 @@ PPMImage load_ppm(std::ifstream &file)
 }
 
 /**
- * Converts rgb to ycbcr
- * Uses the standard as defined in ITU-T Rec. T.871 (05/2011) to four decimal point accuracy
- * Y = 0.299R + 0.587G + 0.114B
- * C_b = -0.1687R - 0.3313G + 0.5B + 128
- * C_r = 0.5R - 0.4187G - 0.0813B + 128
- * Note: this implementation avoids flops opting for the conversion using: 65,536
- * Example: 0.299 * 65,536 = 19595
- * @param r,g,b,y,cb,cr The initial pixel colors and their results
- * @return void: passes y,cb,cr by reference
+ * Converts an RGB triplet into YCbCr color space using the standard JPEG coefficients.
+ * @param r Red channel value.
+ * @param g Green channel value.
+ * @param b Blue channel value.
+ * @param y Output luma component.
+ * @param cb Output blue-difference chroma component.
+ * @param cr Output red-difference chroma component.
  */
 void rgb_to_ycbcr(uint8_t r, uint8_t g, uint8_t b, uint8_t &y, uint8_t &cb, uint8_t &cr)
 {
@@ -95,15 +99,14 @@ void rgb_to_ycbcr(uint8_t r, uint8_t g, uint8_t b, uint8_t &y, uint8_t &cb, uint
 }
 
 /**
- * Calls the rgb_to_ycbcr conversion
- * @param img
- * @return void
+ * Converts every RGB pixel in the image to YCbCr and stores the result in the image structure.
+ * @param img Image whose pixel data will be transformed in place.
  */
 void color_shift(PPMImage &img)
 {
     img.ycbcr_image.resize(img.pixels.size());
 
-    for (uint8_t i = 0; i < img.pixels.size(); i++)
+    for (size_t i = 0; i < img.pixels.size(); i++)
     {
         uint8_t y = 0, cb = 0, cr = 0;
         rgb_to_ycbcr(img.pixels[i].r, img.pixels[i].g, img.pixels[i].b, y, cb, cr);
@@ -114,9 +117,8 @@ void color_shift(PPMImage &img)
 }
 
 /**
- * Prints the rgb values of PPMImage
- * @param img
- * @return void
+ * Prints the RGB values of the image for debugging.
+ * @param img Image to display.
  */
 void print_rgb(const PPMImage &img)
 {
@@ -128,9 +130,8 @@ void print_rgb(const PPMImage &img)
 }
 
 /**
- * Prints the ycbcr values of PPMImage
- * @param img
- * @return void
+ * Prints the YCbCr values of the image for debugging.
+ * @param img Image to display.
  */
 void print_ycbcr(const PPMImage &img)
 {

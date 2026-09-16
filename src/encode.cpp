@@ -13,6 +13,14 @@
 #include "bitwriter.h"
 #include "encode.h"
 
+/**
+ * Writes a JPEG Huffman table segment (DHT) with the provided code counts and values.
+ * @param file Output stream for the JPEG file.
+ * @param tableClass DC or AC class selector.
+ * @param tableID Target Huffman table number.
+ * @param counts Number of codes for each bit length.
+ * @param values Huffman code symbols in order.
+ */
 void JPEGEncoder::write_dht(std::fstream &file, uint8_t tableClass, uint8_t tableID,
                             const uint8_t *counts, const uint8_t *values)
 {
@@ -31,6 +39,10 @@ void JPEGEncoder::write_dht(std::fstream &file, uint8_t tableClass, uint8_t tabl
     file.write(reinterpret_cast<const char *>(values), numValues);
 }
 
+/**
+ * Writes the JPEG Start of Scan (SOS) marker and component table mapping.
+ * @param file Output stream for the JPEG file.
+ */
 void JPEGEncoder::write_sos(std::fstream &file)
 {
     file.put(0xFF);
@@ -57,6 +69,9 @@ void JPEGEncoder::write_sos(std::fstream &file)
     file.put(0x00); // Ah/Al
 }
 
+/**
+ * Builds a JPEG header with quantization tables, Huffman tables, and the scan metadata.
+ */
 void JPEGEncoder::headify()
 {
     std::fstream file("Image.jpeg", std::ios::out | std::ios::binary);
@@ -127,46 +142,64 @@ void JPEGEncoder::headify()
 
     // --- SOS ---
     write_sos(file);
-    encode_image();
+    encode_image(file);
+
+    // --- EOI ---
+    file.put(0xFF);
+    file.put(0xD9);
 }
 
-void JPEGEncoder::encode_image()
+/**
+ * Encodes each 8x8 block into JPEG bitstream data, including DCT, quantization, RLE, and Huffman coding.
+ * @param file Output file receiving the compressed scan data.
+ */
+void JPEGEncoder::encode_image(std::fstream &file)
 {
-    // Calculate total blocks, rounding up to handle padding
     int blocks_across = (img.width + 7) / 8;
     int blocks_down = (img.height + 7) / 8;
 
-    // Luminance tables
     HuffmanTable dc_table_y(true, false);
-    HuffmanTable ac_table_y(false, false);
     dc_table_y.initialize();
+    HuffmanTable ac_table_y(false, false);
     ac_table_y.initialize();
-
-    // Chrominance tables
     HuffmanTable dc_table_c(true, true);
-    HuffmanTable ac_table_c(false, true);
     dc_table_c.initialize();
+    HuffmanTable ac_table_c(false, true);
     ac_table_c.initialize();
 
-    //
+    BitWriter bitwriter; // ONE continuous stream for the entire scan
+
     for (int by = 0; by < blocks_down; by++)
     {
         for (int bx = 0; bx < blocks_across; bx++)
         {
-            // Extract the three blocks for this 8x8 physical patch
             Block8x8 y_block = extract_block(img, bx, by, 0);
             Block8x8 cb_block = extract_block(img, bx, by, 1);
             Block8x8 cr_block = extract_block(img, bx, by, 2);
 
-            // DCT calculations for each block
+            // std::cout << "Color Block" << std::endl;
+            // print_block(y_block);
+            // print_block(cb_block);
+            // print_block(cr_block);
+
             Block8x8 y_dct = perform_dct(y_block);
             Block8x8 cb_dct = perform_dct(cb_block);
             Block8x8 cr_dct = perform_dct(cr_block);
 
-            // Quant calculations for each block
+            // std::cout << "DCT Block" << std::endl;
+            // print_block(y_dct);
+            // print_block(cb_dct);
+            // print_block(cr_dct);
+
             QuantBlock8x8 y_q = quantize(y_dct, LUMINANCE_TABLE);
             QuantBlock8x8 cb_q = quantize(cb_dct, CHROMINANCE_TABLE);
             QuantBlock8x8 cr_q = quantize(cr_dct, CHROMINANCE_TABLE);
+
+            // std::cout << "Quant Block" << std::endl;
+
+            // print_block(y_q);
+            // print_block(cb_q);
+            // print_block(cr_q);
 
             ZigZagBlock y_zz = zigzag_scan(y_q);
             ZigZagBlock cb_zz = zigzag_scan(cb_q);
@@ -179,12 +212,14 @@ void JPEGEncoder::encode_image()
             EncodedBlockSymbols cr_rle = encode_rle(cr_zz, state.prev_dc_cr);
             state.prev_dc_cr = cr_zz.data[0];
 
-            BitWriter bitwriter_y;
-            write_block_bits(bitwriter_y, y_rle, dc_table_y, ac_table_y);
-            BitWriter bitwriter_cb;
-            write_block_bits(bitwriter_cb, cb_rle, dc_table_c, ac_table_c);
-            BitWriter bitwriter_cr;
-            write_block_bits(bitwriter_cr, cr_rle, dc_table_c, ac_table_c);
+            write_block_bits(bitwriter, y_rle, dc_table_y, ac_table_y);
+            write_block_bits(bitwriter, cb_rle, dc_table_c, ac_table_c);
+            write_block_bits(bitwriter, cr_rle, dc_table_c, ac_table_c);
         }
     }
+
+    bitwriter.flush(); // pad final byte with 1s, stuff if needed
+
+    const auto &bytes = bitwriter.data();
+    file.write(reinterpret_cast<const char *>(bytes.data()), bytes.size());
 }

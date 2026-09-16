@@ -5,11 +5,6 @@
 #include <cstdint>
 #include <fstream>
 
-/**
- * Maybe make this a class since encode is becoming a class (Note: This is getting
- * out of hand in some respects)
- */
-
 enum class PPMType
 {
     P3_ASCII,
@@ -44,6 +39,6 @@ PPMType detect_ppm_type(std::ifstream &file);
 PPMImage load_ppm(std::ifstream &file);
 void color_shift(PPMImage &img);
 void print_rgb(const PPMImage &img);
-void printycbcr(const PPMImage &img);
+void print_ycbcr(const PPMImage &img);
 
 #endif

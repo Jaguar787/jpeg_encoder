@@ -36,7 +36,7 @@ public:
         {99, 99, 99, 99, 99, 99, 99, 99}};
 
     JPEGEncoder(const PPMImage &img) : img(img) {};
-    void encode_image();
+    void encode_image(std::fstream &file);
     void write_dht(std::fstream &file, uint8_t tableClass, uint8_t tableID,
                    const uint8_t *counts, const uint8_t *values);
     void write_sos(std::fstream &file);

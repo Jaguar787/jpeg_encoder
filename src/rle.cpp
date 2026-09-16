@@ -4,6 +4,12 @@
 #include "zigzag.h"
 #include "rle.h"
 
+/**
+ * Encodes one block in JPEG-style DC delta and AC run-length format.
+ * @param z Zig-zag ordered quantized block values.
+ * @param prev_dc Previous DC coefficient used to compute the delta value.
+ * @return RLE-encoded block with differential DC and AC symbol pairs.
+ */
 EncodedBlockSymbols encode_rle(const ZigZagBlock &z, int16_t prev_dc)
 {
     EncodedBlockSymbols enc;
