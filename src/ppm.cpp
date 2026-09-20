@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <fstream>
 #include <iostream>
+#include <limits>
 
 #include "ppm.h"
 
@@ -24,6 +25,17 @@ PPMType detect_ppm_type(std::ifstream &file)
 }
 
 /**
+ * Helper function to consume whitespace and skip '#' comment lines in PPM headers.
+ */
+static void skip_ppm_comments(std::ifstream &file)
+{
+    while (file >> std::ws && file.peek() == '#')
+    {
+        file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    }
+}
+
+/**
  * Loads a PPM image from disk into a memory structure for later JPEG processing.
  * @param file Input stream containing the image file.
  * @return Parsed image data and metadata.
@@ -43,9 +55,19 @@ PPMImage load_ppm(std::ifstream &file)
         return img;
     }
 
-    int max_color = 0;
+    // Skip comments before dimensions
+    skip_ppm_comments(file);
+    if (!(file >> img.width))
+        return img;
 
-    file >> img.width >> img.height >> max_color;
+    skip_ppm_comments(file);
+    if (!(file >> img.height))
+        return img;
+
+    int max_color = 0;
+    skip_ppm_comments(file);
+    if (!(file >> max_color))
+        return img;
 
     img.pixels.resize(img.width * img.height);
 
@@ -72,7 +94,14 @@ PPMImage load_ppm(std::ifstream &file)
     }
     else if (type == PPMType::P6_BINARY) // Has not been tested but "should" work
     {
+        file.get();
+
         file.read(reinterpret_cast<char *>(img.pixels.data()), img.pixels.size() * sizeof(RGB));
+
+        if (!(file))
+        {
+            std::cerr << "Error: Short read or fail while parsing binary P6 payload.\n";
+        }
     }
 
     return img;

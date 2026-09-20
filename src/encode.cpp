@@ -177,29 +177,13 @@ void JPEGEncoder::encode_image(std::fstream &file)
             Block8x8 cb_block = extract_block(img, bx, by, 1);
             Block8x8 cr_block = extract_block(img, bx, by, 2);
 
-            // std::cout << "Color Block" << std::endl;
-            // print_block(y_block);
-            // print_block(cb_block);
-            // print_block(cr_block);
-
             Block8x8 y_dct = perform_dct(y_block);
             Block8x8 cb_dct = perform_dct(cb_block);
             Block8x8 cr_dct = perform_dct(cr_block);
 
-            // std::cout << "DCT Block" << std::endl;
-            // print_block(y_dct);
-            // print_block(cb_dct);
-            // print_block(cr_dct);
-
             QuantBlock8x8 y_q = quantize(y_dct, LUMINANCE_TABLE);
             QuantBlock8x8 cb_q = quantize(cb_dct, CHROMINANCE_TABLE);
             QuantBlock8x8 cr_q = quantize(cr_dct, CHROMINANCE_TABLE);
-
-            // std::cout << "Quant Block" << std::endl;
-
-            // print_block(y_q);
-            // print_block(cb_q);
-            // print_block(cr_q);
 
             ZigZagBlock y_zz = zigzag_scan(y_q);
             ZigZagBlock cb_zz = zigzag_scan(cb_q);

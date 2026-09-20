@@ -20,7 +20,6 @@ public:
     bool is_dc;
     bool is_cb;
 
-    // Needs input handling for LCbCr and AC/DC
     HuffmanTable() {};
     HuffmanTable(bool is_dc, bool is_cb) : is_dc(is_dc), is_cb(is_cb) {};
 
